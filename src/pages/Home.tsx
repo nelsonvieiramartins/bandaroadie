@@ -24,6 +24,10 @@ export default function Home() {
   const [videoItems, setVideoItems] = useState<any[]>([]);
   const [discographyItems, setDiscographyItems] = useState<any[]>([]);
   const [agendaItems, setAgendaItems] = useState<any[]>([]);
+  const [memberItems, setMemberItems] = useState<any[]>([]);
+
+  // Modal State
+  const [selectedMember, setSelectedMember] = useState<any | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -33,18 +37,21 @@ export default function Home() {
           { data: gallery },
           { data: videos },
           { data: discography },
-          { data: agenda }
+          { data: agenda },
+          { data: members }
         ] = await Promise.all([
           supabase.from('gallery').select('*').order('created_at', { ascending: false }),
           supabase.from('videos').select('*').order('created_at', { ascending: false }),
           supabase.from('discography').select('*').order('created_at', { ascending: false }),
-          supabase.from('agenda').select('*').order('event_date', { ascending: true })
+          supabase.from('agenda').select('*').order('event_date', { ascending: true }),
+          supabase.from('members').select('*').order('created_at', { ascending: true })
         ]);
 
         if (gallery) setGalleryItems(gallery);
         if (videos) setVideoItems(videos);
         if (discography) setDiscographyItems(discography);
         if (agenda) setAgendaItems(agenda);
+        if (members) setMemberItems(members);
       } catch (error) {
         console.error("Erro ao carregar dados", error);
       } finally {
@@ -202,17 +209,12 @@ export default function Home() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { name: "Ygor", role: "Vocal", img: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=600&auto=format&fit=crop" },
-                  { name: "Mauro Fernando", role: "Guitarra", img: "https://images.unsplash.com/photo-1493225457124-a1a2a5f5f4b2?q=80&w=600&auto=format&fit=crop" },
-                  { name: "Thiago", role: "Baixo", img: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=600&auto=format&fit=crop" },
-                  { name: "Eduardo", role: "Bateria", img: "https://images.unsplash.com/photo-1543443374-ba2204ebdcf0?q=80&w=600&auto=format&fit=crop" }
-                ].map((member) => (
-                  <div key={member.name} className="group relative border-2 border-zinc-800 overflow-hidden cursor-pointer transition-all duration-300 hover:border-primary bg-zinc-900">
+                {memberItems.length > 0 ? memberItems.map((member) => (
+                  <div key={member.id} onClick={() => setSelectedMember(member)} className="group relative border-2 border-zinc-800 overflow-hidden cursor-pointer transition-all duration-300 hover:border-primary bg-zinc-900">
                     <div className="aspect-[3/4] relative overflow-hidden">
                       <div
                         className="w-full h-full bg-cover bg-center transition-all duration-700 grayscale group-hover:grayscale-0 group-hover:scale-105"
-                        style={{ backgroundImage: `url('${member.img}')` }}
+                        style={{ backgroundImage: `url('${member.image_url}')` }}
                       />
                       <div className="absolute inset-0 bg-black/40 group-hover:bg-black/10 transition-colors"></div>
 
@@ -222,9 +224,89 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-zinc-500 font-inter col-span-full">Nenhum integrante cadastrado no momento.</p>
+                )}
               </div>
             </section>
+
+            {/* Member Modal */}
+            {selectedMember && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                {/* Backdrop overlay */}
+                <div
+                  className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+                  onClick={() => setSelectedMember(null)}
+                ></div>
+
+                {/* Modal content */}
+                <div className="relative bg-zinc-900 border-2 border-primary w-full max-w-4xl max-h-[90vh] overflow-y-auto z-10 shadow-2xl">
+                  {/* Close button */}
+                  <button
+                    onClick={() => setSelectedMember(null)}
+                    className="absolute top-4 right-4 z-20 size-10 bg-black/50 hover:bg-primary hover:text-black flex items-center justify-center border border-white/10 transition-all"
+                  >
+                    <X className="size-6" />
+                  </button>
+
+                  <div className="flex flex-col md:flex-row gap-0">
+                    {/* Left side: Cover photo */}
+                    <div className="md:w-2/5 aspect-[3/4] md:aspect-auto md:min-h-[500px] relative">
+                      <div
+                        className="absolute inset-0 bg-cover bg-center"
+                        style={{ backgroundImage: `url('${selectedMember.image_url}')` }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent md:hidden"></div>
+                    </div>
+
+                    {/* Right side: Info */}
+                    <div className="p-8 md:p-12 md:w-3/5 flex flex-col justify-center">
+                      <h4 className="text-primary text-xs font-bold uppercase tracking-[0.3em] mb-2">{selectedMember.role}</h4>
+                      <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-none mb-6">
+                        {selectedMember.name}<span className="text-primary">.</span>
+                      </h2>
+
+                      <div className="space-y-6 mb-8">
+                        <div>
+                          <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mb-1">Nome Completo</p>
+                          <p className="text-white text-lg font-inter">{selectedMember.full_name}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mb-1">Influências / Estilo Favorito</p>
+                          <p className="text-white text-lg font-inter">{selectedMember.favorite_style}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mb-1">Sobre</p>
+                          <p className="text-zinc-300 font-inter leading-relaxed">{selectedMember.presentation_text}</p>
+                        </div>
+                      </div>
+
+                      {/* Photo Gallery within Modal */}
+                      {selectedMember.gallery_urls && selectedMember.gallery_urls.length > 0 && (
+                        <div>
+                          <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mb-4">Galeria</p>
+                          <div className="flex gap-2 overflow-x-auto pb-4 snap-x">
+                            {selectedMember.gallery_urls.split(',').map((url: string, idx: number) => (
+                              <div
+                                key={idx}
+                                className="w-24 h-24 shrink-0 bg-zinc-800 border border-zinc-700 overflow-hidden snap-start"
+                              >
+                                <img
+                                  src={url.trim()}
+                                  alt={`Galeria ${selectedMember.name} ${idx + 1}`}
+                                  className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all cursor-pointer"
+                                  onClick={() => window.open(url.trim(), '_blank')}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Marquee Ticker 2 - Nomes de Bandas */}
             <div className="w-full overflow-hidden py-16">
@@ -299,6 +381,7 @@ export default function Home() {
                     <VideoItem
                       key={item.id}
                       image={item.video_thumb_url}
+                      youtubeUrl={item.youtube_url}
                       title={item.title}
                       meta={item.meta}
                       duration={item.duration}
@@ -373,25 +456,41 @@ function GalleryItem({ image, title, alt }: { image: string; title: string; alt?
   );
 }
 
-function VideoItem({ image, title, meta, duration }: { image: string; title: string; meta: string; duration: string; accent: 'primary' | 'secondary' }) {
+function VideoItem({ image, youtubeUrl, title, meta, duration }: { image: string; youtubeUrl?: string; title: string; meta: string; duration: string; accent: 'primary' | 'secondary' }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+
   return (
-    <div className="flex flex-col gap-4 group cursor-pointer">
-      <div className="relative aspect-video overflow-hidden bg-zinc-900 border-2 border-zinc-800 group-hover:border-primary transition-colors">
-        <div
-          className="absolute inset-0 bg-cover bg-center grayscale group-hover:grayscale-0 transition-all duration-700"
-          style={{ backgroundImage: `url('${image}')` }}
-        />
-        <div className="absolute inset-0 bg-black/40 group-hover:bg-black/10 transition-all flex items-center justify-center">
-          <div className="w-16 h-16 bg-primary text-black flex items-center justify-center scale-90 group-hover:scale-110 transition-transform">
-            <Play className="size-8 fill-current ml-1" />
-          </div>
-        </div>
-        <div className="absolute bottom-4 left-4 bg-black px-3 py-1 text-xs font-bold text-primary font-inter border border-primary/30">
-          {duration}
-        </div>
+    <div className="flex flex-col gap-4 group">
+      <div className="relative aspect-video overflow-hidden bg-zinc-900 border-2 border-zinc-800 group-hover:border-primary transition-colors cursor-pointer" onClick={() => setIsPlaying(true)}>
+
+        {isPlaying && youtubeUrl ? (
+          <iframe
+            src={`${youtubeUrl}?autoplay=1`}
+            title={title}
+            className="w-full h-full absolute inset-0 z-10"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          ></iframe>
+        ) : (
+          <>
+            <div
+              className="absolute inset-0 bg-cover bg-center grayscale group-hover:grayscale-0 transition-all duration-700"
+              style={{ backgroundImage: `url('${image}')` }}
+            />
+            <div className="absolute inset-0 bg-black/40 group-hover:bg-black/10 transition-all flex items-center justify-center">
+              <div className="w-16 h-16 bg-primary text-black flex items-center justify-center scale-90 group-hover:scale-110 transition-transform shadow-[0_0_30px_rgba(234,255,0,0.3)]">
+                <Play className="size-8 fill-current ml-1" />
+              </div>
+            </div>
+            <div className="absolute bottom-4 left-4 bg-black px-3 py-1 text-xs font-bold text-primary font-inter border border-primary/30 z-0">
+              {duration}
+            </div>
+          </>
+        )}
+
       </div>
       <div>
-        <h4 className="text-2xl font-black uppercase text-white group-hover:text-primary transition-colors">{title}</h4>
+        <h4 className="text-2xl font-black uppercase text-white group-hover:text-primary transition-colors cursor-pointer" onClick={() => setIsPlaying(true)}>{title}</h4>
         <p className="text-zinc-500 text-xs mt-1 uppercase font-bold tracking-widest">{meta}</p>
       </div>
     </div>
